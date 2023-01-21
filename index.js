@@ -1,6 +1,8 @@
 const { ApolloServer } = require("apollo-server");
+const { GraphQLScalarType } = require("graphql");
 
 const typeDefs = `
+scalar DateTime
 enum PhotoCategory {
   SELFIE
   PORTRAIT
@@ -23,6 +25,7 @@ type Photo {
   category: PhotoCategory!
   postedBy: User!
   taggedUsers: [User!]!
+  created: DateTime!
 }
 input PostPhotoInput {
   name: String!
@@ -31,7 +34,7 @@ input PostPhotoInput {
 }
 type Query {
   totalPhotos: Int!
-  allPhotos: [Photo!]!
+  allPhotos(after: DateTime): [Photo!]!
 }
 type Mutation {
   postPhoto(input: PostPhotoInput!): Photo!
@@ -53,12 +56,14 @@ var photos = [
     description: "The heart chute is one of my favorite chutes",
     category: "ACTION",
     githubUser: "gPlake",
+    created: "2022-04-15T19:09:57.308Z",
   },
   {
     id: "2",
     name: "Enjoying the sunshine",
     category: "SELFIE",
     githubUser: "sSchmidt",
+    created: "2022-04-15T19:09:57.308Z",
   },
   {
     id: "3",
@@ -66,6 +71,7 @@ var photos = [
     description: "25 laps on gunbarrel today",
     category: "LANDSCAPE",
     githubUser: "sSchmidt",
+    created: "2022-04-15T19:09:57.308Z",
   },
 ];
 
@@ -79,13 +85,23 @@ var tags = [
 const resolvers = {
   Query: {
     totalPhotos: () => 42,
-    allPhotos: () => photos,
+    allPhotos: (parent, args) => {
+      const { after } = args;
+      console.log("allPhotos", after);
+      if (after) {
+        return photos.filter(
+          (photo) => new Date(photo.created) > new Date(after)
+        );
+      }
+      return photos;
+    },
   },
   Mutation: {
     postPhoto(parent, args) {
       const newPhoto = {
         id: _id++,
         ...args.input,
+        created: new Date(),
       };
       photos.push(newPhoto);
       return newPhoto;
@@ -114,6 +130,13 @@ const resolvers = {
         .map((photoID) => photos.find((photo) => photo.id === photoID));
     },
   },
+  DateTime: new GraphQLScalarType({
+    name: `DateTime`,
+    description: `A valid date time value.`,
+    parseValue: (value) => new Date(value), // Queryの引数に渡されるときに適用される関数
+    serialize: (value) => new Date(value).toISOString(), // Queryを返却するときに適用される関数
+    parseLiteral: (ast) => ast.value, // Query変数ではなく、直接Query引数で指定された場合に適用される関数
+  }),
 };
 
 // サーバーのインスタンスを作成、その際、typeDefs（スキーマ）とリゾルバを引数に取る
