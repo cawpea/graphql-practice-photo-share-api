@@ -1,5 +1,7 @@
 const { ApolloServer } = require("apollo-server-express");
 const express = require("express");
+const expressPlayground =
+  require("graphql-playground-middleware-express").default;
 const { GraphQLScalarType } = require("graphql");
 
 const typeDefs = `
@@ -152,6 +154,7 @@ async function startApolloServer() {
   server.applyMiddleware({ app });
 
   app.get("/", (req, res) => res.end(`Welcome to the PhotoShare API`));
+  app.get("/playground", expressPlayground({ endpoint: `/graphql` }));
 
   // Webサーバーを起動
   app.listen({ port: 4000 }, () => {
