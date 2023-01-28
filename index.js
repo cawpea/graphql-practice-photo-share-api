@@ -1,3 +1,6 @@
+const { MongoClient } = require("mongodb");
+require("dotenv").config();
+
 const { ApolloServer } = require("apollo-server-express");
 const express = require("express");
 const expressPlayground =
@@ -9,10 +12,17 @@ const resolvers = require("./resolvers");
 
 async function startApolloServer() {
   const app = express();
+  const MONGO_DB = process.env.DB_HOST;
+
+  const client = await MongoClient.connect(MONGO_DB, { useNewUrlParser: true });
+  const db = client.db;
+  const context = { db };
+
   // サーバーのインスタンスを作成、その際、typeDefs（スキーマ）とリゾルバを引数に取る
   const server = new ApolloServer({
     typeDefs,
     resolvers,
+    context,
   });
 
   await server.start();
