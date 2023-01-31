@@ -1,4 +1,7 @@
+require("dotenv").config();
+
 const { GraphQLScalarType } = require("graphql");
+const { authorizeWithGithub } = require("../lib");
 
 let _id = 0;
 
@@ -73,6 +76,41 @@ const resolvers = {
       };
       photos.push(newPhoto);
       return newPhoto;
+    },
+    async githubAuth(parent, { code }, { db }) {
+      // GitHubからデータを取得する
+      let { message, access_token, avatar_url, login, name } =
+        await authorizeWithGithub({
+          client_id: process.env.GITHUB_CLIENT_ID,
+          client_secret: process.env.GITHUB_CLIENT_SECRET,
+          code,
+        });
+
+      // メッセージがある場合は何らかのエラーが発生している
+      if (message) {
+        throw new Error(message);
+      }
+
+      // データをひとつのオブジェクトにまとめる
+      let latestUserInfo = {
+        name,
+        githubLogin: login,
+        githubToken: access_token,
+        avatar: avatar_url,
+      };
+
+      // 新しい情報をもとにレコードを追加・更新する
+      await db
+        .collection("users")
+        .replaceOne({ githubLogin: login }, latestUserInfo, { upsert: true });
+
+      // 追加・更新したユーザー情報を取得する
+      const users = await db
+        .collection("users")
+        .find({ githubLogin: login })
+        .toArray();
+
+      return { user: users[0], token: access_token };
     },
   },
   Photo: {
