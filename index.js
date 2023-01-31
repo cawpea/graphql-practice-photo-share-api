@@ -15,27 +15,30 @@ async function startApolloServer() {
   const MONGO_DB = process.env.DB_HOST;
 
   const client = await MongoClient.connect(MONGO_DB, { useNewUrlParser: true });
-  const db = client.db;
-  const context = { db };
 
-  // サーバーのインスタンスを作成、その際、typeDefs（スキーマ）とリゾルバを引数に取る
-  const server = new ApolloServer({
-    typeDefs,
-    resolvers,
-    context,
-  });
+  client.connect(async (err, db) => {
+    const dbConnection = db.db("sample_for_learning_graphql");
+    const context = { db: dbConnection };
 
-  await server.start();
-  server.applyMiddleware({ app });
+    // サーバーのインスタンスを作成、その際、typeDefs（スキーマ）とリゾルバを引数に取る
+    const server = new ApolloServer({
+      typeDefs,
+      resolvers,
+      context,
+    });
 
-  app.get("/", (req, res) => res.end(`Welcome to the PhotoShare API`));
-  app.get("/playground", expressPlayground({ endpoint: `/graphql` }));
+    await server.start();
+    server.applyMiddleware({ app });
 
-  // Webサーバーを起動
-  app.listen({ port: 4000 }, () => {
-    console.log(
-      `GraphQL Server running @ http://localhost:4000${server.graphqlPath}`
-    );
+    app.get("/", (req, res) => res.end(`Welcome to the PhotoShare API`));
+    app.get("/playground", expressPlayground({ endpoint: `/graphql` }));
+
+    // Webサーバーを起動
+    app.listen({ port: 4000 }, () => {
+      console.log(
+        `GraphQL Server running @ http://localhost:4000${server.graphqlPath}`
+      );
+    });
   });
 }
 

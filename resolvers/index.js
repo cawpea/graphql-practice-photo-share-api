@@ -43,16 +43,25 @@ var tags = [
 
 const resolvers = {
   Query: {
-    totalPhotos: () => 42,
-    allPhotos: (parent, args) => {
-      const { after } = args;
-      console.log("allPhotos", after);
-      if (after) {
-        return photos.filter(
-          (photo) => new Date(photo.created) > new Date(after)
-        );
-      }
-      return photos;
+    totalPhotos: (parent, args, { db }) => {
+      return db.collection("photos").estimatedDocumentCount();
+    },
+    allPhotos: (parent, args, { db }) => {
+      // const { after } = args;
+      // console.log("allPhotos", after);
+      // if (after) {
+      //   return photos.filter(
+      //     (photo) => new Date(photo.created) > new Date(after)
+      //   );
+      // }
+      // return photos;
+      return db.collection("photos").find({}).toArray();
+    },
+    totalUsers: (parent, args, { db }) => {
+      return db.collection("users").estimatedDocumentCount();
+    },
+    allUsers: (parent, args, { db }) => {
+      return db.collection("users").find().toArray();
     },
   },
   Mutation: {
