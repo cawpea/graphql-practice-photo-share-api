@@ -69,13 +69,20 @@ const resolvers = {
     },
   },
   Mutation: {
-    postPhoto(parent, args) {
+    async postPhoto(parent, args, { db, currentUser }) {
+      if (!currentUser) {
+        throw new Error("only an authorized user can post a photo");
+      }
+
       const newPhoto = {
-        id: _id++,
         ...args.input,
+        userID: currentUser.githubLogin,
         created: new Date(),
       };
-      photos.push(newPhoto);
+
+      const { insertedIds } = await db.collection("photos").insert(newPhoto);
+      newPhoto.id = insertedIds[0];
+
       return newPhoto;
     },
     async githubAuth(parent, { code }, { db }) {
@@ -115,16 +122,17 @@ const resolvers = {
     },
   },
   Photo: {
+    id: (parent) => parent.id || parent._id,
     url: (parent) => `https://blog.cawpea.me/${parent.id}.jpg`,
-    postedBy: (parent) => {
-      return users.find((user) => user.githubLogin === parent.githubUser);
+    postedBy: (parent, args, { db }) => {
+      return db.collection("users").findOne({ githubLogin: parent.userID });
     },
-    taggedUsers: (parent) => {
-      return tags
-        .filter((tag) => tag.photoID === parent.id)
-        .map((tag) => tag.userID)
-        .map((userID) => users.find((user) => user.githubLogin === userID));
-    },
+    // taggedUsers: (parent) => {
+    //   return tags
+    //     .filter((tag) => tag.photoID === parent.id)
+    //     .map((tag) => tag.userID)
+    //     .map((userID) => users.find((user) => user.githubLogin === userID));
+    // },
   },
   User: {
     postedPhotos: (parent) => {
