@@ -16,15 +16,20 @@ async function startApolloServer() {
 
   const client = await MongoClient.connect(MONGO_DB, { useNewUrlParser: true });
 
-  client.connect(async (err, db) => {
-    const dbConnection = db.db("sample_for_learning_graphql");
-    const context = { db: dbConnection };
+  client.connect(async (err, dbs) => {
+    const db = dbs.db("sample_for_learning_graphql");
 
     // サーバーのインスタンスを作成、その際、typeDefs（スキーマ）とリゾルバを引数に取る
     const server = new ApolloServer({
       typeDefs,
       resolvers,
-      context,
+      context: async ({ req }) => {
+        const githubToken = req.headers.authorization;
+        const currentUser = await db
+          .collection("users")
+          .findOne({ githubToken });
+        return { db, currentUser };
+      },
     });
 
     await server.start();
